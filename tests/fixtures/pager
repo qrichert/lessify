@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+
+# Output anything given to stdin.
+cat > $TEST_OUTPUT_FILE

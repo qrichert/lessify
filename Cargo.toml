@@ -10,4 +10,7 @@ readme = "README.md"
 keywords = ["tui", "less", "pager", "terminal", "console"]
 categories = ["command-line-interface", "rendering::engine"]
 
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin_include)'] }
+
 [dependencies]

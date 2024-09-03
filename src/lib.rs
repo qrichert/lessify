@@ -62,16 +62,20 @@ impl Pager {
         pager.stdout(Stdio::inherit());
         pager.stderr(Stdio::inherit());
 
-        if *PAGER == "less" || PAGER.ends_with("/less") {
-            pager.env("LESSCHARSET", "UTF-8");
-            // Use short args for better compatibility.
-            pager.arg("-R"); // `--RAW-CONTROL-CHARS` Do not render ANSI sequences as text.
-            pager.arg("-F"); // `--quit-if-one-screen` Do not page if the entire output fits on the screen.
+        #[cfg(not(tarpaulin_include))]
+        {
+            if *PAGER == "less" || PAGER.ends_with("/less") {
+                pager.env("LESSCHARSET", "UTF-8");
+                // Use short args for better compatibility.
+                pager.arg("-R"); // `--RAW-CONTROL-CHARS` Do not render ANSI sequences as text.
+                pager.arg("-F"); // `--quit-if-one-screen` Do not page if the entire output fits on the screen.
+            }
         }
 
         let mut child = pager.spawn()?;
 
         let Some(stdin) = child.stdin.as_mut() else {
+            #[cfg(not(tarpaulin_include))]
             return Err(io::Error::new(
                 io::ErrorKind::BrokenPipe,
                 "Failed to open stdin.",

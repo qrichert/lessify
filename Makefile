@@ -46,7 +46,7 @@ check: ## Most stringent checks (includes checks still in development)
 t: test
 .PHONY: test
 test: ## Run unit tests
-	@cargo test
+	@cargo test -- --test-threads 1
 
 .PHONY: c
 c: coverage
