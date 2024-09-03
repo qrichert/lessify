@@ -16,7 +16,11 @@ impl Pager {
     /// scenario just print to stdout, no big deal.
     pub fn page_or_print(content: &str) {
         if Self::page(content).is_err() {
-            println!("{content}");
+            if content.ends_with('\n') {
+                print!("{content}");
+            } else {
+                println!("{content}");
+            }
         }
     }
 
@@ -50,7 +54,12 @@ impl Pager {
                 "Failed to open stdin.",
             ));
         };
-        write!(stdin, "{content}")?;
+
+        if content.ends_with('\n') {
+            write!(stdin, "{content}")?;
+        } else {
+            writeln!(stdin, "{content}")?;
+        }
 
         child.wait()?;
 
