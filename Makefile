@@ -27,18 +27,6 @@ help: ## Show this help message
 clean: ## Clean project files
 	@cargo clean
 
-.PHONY: r
-r: run
-.PHONY: run
-run: ## Build and run program
-	@cargo run --quiet
-
-.PHONY: b
-b: build
-.PHONY: build
-build: ## Make optimized release build
-	@cargo build --release
-
 .PHONY: l
 l: lint
 .PHONY: lint
@@ -59,10 +47,6 @@ t: test
 .PHONY: test
 test: ## Run unit tests
 	@cargo test
-
-.PHONY: doc
-doc: ## Build documentation
-	@cargo doc
 
 .PHONY: c
 c: coverage

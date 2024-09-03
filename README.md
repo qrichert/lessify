@@ -3,7 +3,6 @@
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue)](https://opensource.org/license/mit)
 ![GitHub Tag](https://img.shields.io/github/v/tag/qrichert/lessify?sort=semver&filter=*.*.*&label=release)
 [![crates.io](https://img.shields.io/crates/d/lessify?logo=rust&logoColor=white&color=orange)](https://crates.io/crates/lessify)
-[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/qrichert/lessify/run-tests.yml?label=tests)](https://github.com/qrichert/lessify/actions)
 
 _Output text through a pager._
 
