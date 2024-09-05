@@ -1,11 +1,34 @@
+//! Output text through a pager.
+//!
+//! It uses `less` by default, or any pager set by the `PAGER`
+//! environment variable.
+//!
+//! The struct of interest is [`Pager`].
+//!
+//! # Examples
+//!
+//! ```no_run
+//! use lessify::Pager;
+//!
+//! // If pager fails, fall back to printing text.
+//! Pager::page_or_print("very long text");
+//! ```
+
 use std::env;
 use std::io::{self, Write};
 use std::process::{Command, Stdio};
 use std::sync::LazyLock;
 
+/// Pager to use, lazily determined.
+///
+/// The logic is as follows:
+///
+/// 1. Look for `PAGER` in the environment.
+/// 2. If not set, default to `less`.
 pub static PAGER: LazyLock<String> =
     LazyLock::new(|| env::var("PAGER").unwrap_or_else(|_| String::from("less")));
 
+/// Output text through a pager.
 pub struct Pager;
 
 impl Pager {
@@ -31,8 +54,8 @@ impl Pager {
     ///
     /// # Errors
     ///
-    /// Errors if the pager cannot be spawn (e.g., executable missing),
-    /// or stdin cannot be written to.
+    /// Errors if the pager cannot be spawned (e.g., executable
+    /// missing), or stdin cannot be captured or written to.
     pub fn page(content: &str) -> Result<(), io::Error> {
         let mut pager = Command::new(&*PAGER);
         pager.stdin(Stdio::piped());

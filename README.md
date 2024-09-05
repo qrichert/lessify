@@ -1,4 +1,4 @@
-# very nice table
+# lessify
 
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue)](https://opensource.org/license/mit)
 ![GitHub Tag](https://img.shields.io/github/v/tag/qrichert/lessify?sort=semver&filter=*.*.*&label=release)
@@ -6,7 +6,7 @@
 
 _Output text through a pager._
 
-It uses `less` by default, or any pager set in the `PAGER` environment
+It uses `less` by default, or any pager set by the `PAGER` environment
 variable.
 
 ## Example

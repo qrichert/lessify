@@ -1,13 +1,13 @@
 [package]
 name = "lessify"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 authors = ["Quentin Richert <noreply@richert.co>"]
 description = "Output text through a pager."
 license = "MIT"
 repository = "https://github.com/qrichert/lessify.git"
 readme = "README.md"
-keywords = ["tui", "table", "terminal", "console"]
+keywords = ["tui", "less", "pager", "terminal", "console"]
 categories = ["command-line-interface", "rendering::engine"]
 
 [dependencies]
