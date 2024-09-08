@@ -1,6 +1,6 @@
 [package]
 name = "lessify"
-version = "0.2.1"
+version = "0.3.0"
 edition = "2021"
 authors = ["Quentin Richert <noreply@richert.co>"]
 description = "Output text through a pager."

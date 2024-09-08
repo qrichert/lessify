@@ -3,9 +3,12 @@
 //! It uses `less` by default, or any pager set by the `PAGER`
 //! environment variable.
 //!
-//! The struct of interest is [`Pager`].
+//! The points of interest are the [`Pager`] struct, and the
+//! [`OutputPaged`] trait.
 //!
 //! # Examples
+//!
+//! Manually:
 //!
 //! ```no_run
 //! use lessify::Pager;
@@ -13,8 +16,18 @@
 //! // If pager fails, fall back to printing text.
 //! Pager::page_or_print("very long text");
 //! ```
+//!
+//! Or with the trait (blanket implementation for `T: Display`):
+//!
+//! ```no_run
+//! use lessify::OutputPaged;
+//!
+//! // Same as `page_or_print()`.
+//! "very long text".output_paged();
+//! ```
 
 use std::env;
+use std::fmt;
 use std::io::{self, Write};
 use std::process::{Command, Stdio};
 use std::sync::LazyLock;
@@ -91,5 +104,39 @@ impl Pager {
         child.wait()?;
 
         Ok(())
+    }
+}
+
+#[cfg(not(tarpaulin_include))]
+pub trait OutputPaged {
+    /// Output `content` with default pager or print to stdout on error.
+    ///
+    /// This is the same as [`Pager::page_or_print()`], but through a
+    /// trait method. This can lead to nicer syntax in builder-like
+    /// contexts (no need to assign to a variable first, or nest calls).
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # struct Foo;
+    /// # impl Foo {
+    /// #     fn foo() -> Self { Self {} }
+    /// #     fn barbaz(self) -> String { String::new() }
+    /// # }
+    /// use lessify::OutputPaged;
+    ///
+    /// Foo::foo()
+    ///     .barbaz()
+    ///     .output_paged();
+    /// ```
+    fn output_paged(&self) {}
+}
+
+impl<T> OutputPaged for T
+where
+    T: fmt::Display,
+{
+    fn output_paged(&self) {
+        Pager::page_or_print(&self.to_string());
     }
 }

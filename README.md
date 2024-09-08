@@ -12,12 +12,15 @@ variable.
 ## Example
 
 ```rust
-use lessify::Pager;
+use lessify::{OutputPaged, Pager};
 
 fn main() {
     let text = very_long_text();
 
     Pager::page_or_print(text);
+
+    // Same, but through trait.
+    text.output_paged();
 }
 ```
 

@@ -1,4 +1,4 @@
-use lessify::{Pager, PAGER};
+use lessify::{OutputPaged, Pager, PAGER};
 use std::env;
 use std::path::PathBuf;
 
@@ -69,4 +69,16 @@ fn page_without_newline() {
     let res = std::fs::read_to_string(res).unwrap();
 
     assert_eq!(res, "hello\nworld\n");
+}
+
+#[test]
+fn output_paged_trait() {
+    set_up_pager("output_paged_trait");
+
+    "very\nlong\nstring\n".output_paged();
+
+    let res = PathBuf::from(TMP_DIR).join("output_paged_trait");
+    let res = std::fs::read_to_string(res).unwrap();
+
+    assert_eq!(res, "very\nlong\nstring\n");
 }
