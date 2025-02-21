@@ -1,4 +1,4 @@
-use lessify::{OutputPaged, Pager, PAGER};
+use lessify::{OutputPaged, PAGER, Pager};
 use std::env;
 use std::path::PathBuf;
 

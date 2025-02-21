@@ -1,4 +1,4 @@
-use lessify::{Pager, PAGER};
+use lessify::{PAGER, Pager};
 use std::env;
 
 const FIXTURES_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures");
