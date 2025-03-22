@@ -1,10 +1,10 @@
 [package]
 name = "lessify"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2024"
 authors = ["Quentin Richert <noreply@richert.co>"]
 description = "Output text through a pager."
-license = "MIT"
+license = "MIT OR Apache-2.0"
 repository = "https://github.com/qrichert/lessify.git"
 readme = "README.md"
 keywords = ["tui", "less", "pager", "terminal", "console"]

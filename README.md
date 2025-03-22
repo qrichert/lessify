@@ -1,6 +1,6 @@
 # lessify
 
-[![license: MIT](https://img.shields.io/badge/license-MIT-blue)](https://opensource.org/license/mit)
+![Crates.io License](https://img.shields.io/crates/l/lessify)
 ![GitHub Tag](https://img.shields.io/github/v/tag/qrichert/lessify?sort=semver&filter=*.*.*&label=release)
 [![crates.io](https://img.shields.io/crates/d/lessify?logo=rust&logoColor=white&color=orange)](https://crates.io/crates/lessify)
 
