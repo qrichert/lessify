@@ -48,8 +48,8 @@ impl Pager {
     /// Output `content` with default pager or print to stdout on error.
     ///
     /// This is a helper function for the common case where you don't
-    /// really care whether the pager succeeded or not. Worst case
-    /// scenario just print to stdout, no big deal.
+    /// really care whether the pager succeeded or not. Worst case, just
+    /// print to stdout.
     pub fn page_or_print(content: &str) {
         if Self::page(content).is_err() {
             if content.ends_with('\n') {
