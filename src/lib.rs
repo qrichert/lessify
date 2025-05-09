@@ -25,6 +25,19 @@
 //! // Same as `page_or_print()`.
 //! "very long text".output_paged();
 //! ```
+//!
+//! # Windows Notes
+//!
+//! The default pager on Windows is set to `more.com`. Unfortunately,
+//! at the time of writing `more` is legacy software which does not
+//! understand multi-byte characters. This leads to mojibake.
+//!
+//! Therefore, when using this crate on Windows, it is advisable to
+//! restrict what you print to the ASCII character set.
+//!
+//! Possible alternative solutions include:
+//! - Reading the active console codepage and converting the output.
+//! - Setting the console codepage, if this is appropriate.
 
 use std::env;
 use std::fmt;
@@ -37,9 +50,17 @@ use std::sync::LazyLock;
 /// The logic is as follows:
 ///
 /// 1. Look for `PAGER` in the environment.
-/// 2. If not set, default to `less`.
-pub static PAGER: LazyLock<String> =
-    LazyLock::new(|| env::var("PAGER").unwrap_or_else(|_| String::from("less")));
+/// 2. If not set, default to `less` on Unix or `more.com` on Windows.
+pub static PAGER: LazyLock<String> = LazyLock::new(|| {
+    env::var("PAGER").unwrap_or_else(|_| {
+        if cfg!(windows) {
+            #[cfg(not(tarpaulin_include))]
+            String::from("more.com")
+        } else {
+            String::from("less")
+        }
+    })
+});
 
 /// Output text through a pager.
 pub struct Pager;
@@ -63,7 +84,7 @@ impl Pager {
     /// Try to use default pager to output `content`.
     ///
     /// The pager is read from the `PAGER` environment variable, or
-    /// defaults to `less`.
+    /// defaults to `less` on Unix or `more.com` on Windows.
     ///
     /// # Errors
     ///
