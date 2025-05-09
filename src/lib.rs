@@ -73,10 +73,12 @@ impl Pager {
     /// print to stdout.
     pub fn page_or_print(content: &str) {
         if Self::page(content).is_err() {
+            let mut stdout = std::io::stdout();
+            // Using write! instead of print! fixes a panic in some circumstances.
             if content.ends_with('\n') {
-                print!("{content}");
+                let _ = write!(stdout, "{content}");
             } else {
-                println!("{content}");
+                let _ = writeln!(stdout, "{content}");
             }
         }
     }
