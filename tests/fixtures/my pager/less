@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+
+# Output args, LESSCHARSET, and anything given to stdin.
+printf '%s\n' "$@" > "$TEST_ARGS_FILE"
+echo "$LESSCHARSET" > "$TEST_LESSCHARSET_FILE"
+cat > "$TEST_OUTPUT_FILE"

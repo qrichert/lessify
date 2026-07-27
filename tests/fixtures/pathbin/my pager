@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+
+# Output args and anything given to stdin.
+printf '%s\n' "$@" > "$TEST_ARGS_FILE"
+cat > "$TEST_OUTPUT_FILE"

@@ -42,7 +42,7 @@
 use std::env;
 use std::fmt;
 use std::io::{self, Write};
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
 use std::sync::LazyLock;
 
 /// Pager to use, lazily determined.
@@ -51,6 +51,11 @@ use std::sync::LazyLock;
 ///
 /// 1. Look for `PAGER` in the environment.
 /// 2. If not set, default to `less` on Unix or `more.com` on Windows.
+///
+/// If `PAGER` cannot be found as-is, split it on whitespace into
+/// the pager and its arguments (e.g., `less -S`). Trying it as-is
+/// first allows pager paths containing spaces. Quoting is not
+/// supported.
 pub static PAGER: LazyLock<String> = LazyLock::new(|| {
     env::var("PAGER").unwrap_or_else(|_| {
         if cfg!(windows) {
@@ -93,23 +98,18 @@ impl Pager {
     /// Errors if the pager cannot be spawned (e.g., executable
     /// missing), or stdin cannot be captured or written to.
     pub fn page(content: &str) -> Result<(), io::Error> {
-        let mut pager = Command::new(&*PAGER);
-        pager.stdin(Stdio::piped());
-        pager.stdout(Stdio::inherit());
-        pager.stderr(Stdio::inherit());
-
-        #[cfg(not(tarpaulin_include))]
-        {
-            if *PAGER == "less" || PAGER.ends_with("/less") {
-                pager.env("LESSCHARSET", "UTF-8");
-                // Use short args for better compatibility.
-                pager.arg("-R"); // `--RAW-CONTROL-CHARS` Do not render ANSI sequences as text.
-                pager.arg("-F"); // `--quit-if-one-screen` Do not page if the entire output fits on the screen.
-                pager.arg("-X"); // `--no-init` Leave content on screen after exit.
+        // Try `PAGER` as-is first to support paths containing spaces.
+        // If it cannot be found, try splitting it into pager and args.
+        let mut child = match spawn_pager(&PAGER, &[]) {
+            Err(e)
+                if e.kind() == io::ErrorKind::NotFound && PAGER.contains(char::is_whitespace) =>
+            {
+                let mut parts = PAGER.split_whitespace();
+                let program = parts.next().unwrap_or_default();
+                spawn_pager(program, &parts.collect::<Vec<_>>())?
             }
-        }
-
-        let mut child = pager.spawn()?;
+            result => result?,
+        };
 
         let Some(stdin) = child.stdin.as_mut() else {
             #[cfg(not(tarpaulin_include))]
@@ -163,4 +163,28 @@ where
     fn output_paged(&self) {
         Pager::page_or_print(&self.to_string());
     }
+}
+
+/// Spawn pager with arguments.
+fn spawn_pager(program: &str, args: &[&str]) -> io::Result<Child> {
+    let mut pager = Command::new(program);
+
+    #[cfg(not(tarpaulin_include))]
+    {
+        if program == "less" || program.ends_with("/less") {
+            pager.env("LESSCHARSET", "UTF-8");
+            // Add defaults first in case user args contain `--`.
+            // Use short args for better compatibility.
+            pager.arg("-R"); // `--RAW-CONTROL-CHARS` Do not render ANSI sequences as text.
+            pager.arg("-F"); // `--quit-if-one-screen` Do not page if the entire output fits on the screen.
+            pager.arg("-X"); // `--no-init` Leave content on screen after exit.
+        }
+    }
+
+    pager.args(args);
+    pager.stdin(Stdio::piped());
+    pager.stdout(Stdio::inherit());
+    pager.stderr(Stdio::inherit());
+
+    pager.spawn()
 }
