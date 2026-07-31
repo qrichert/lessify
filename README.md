@@ -38,3 +38,11 @@ rna nibh. Proin luctus, augue non aliquam elementum, purus magna consequat ligul
 a, id lobortis magna leo nec nunc. Donec at turpis dapibus, malesuada massa vita
 :
 ```
+
+## Package
+
+The crate is available on [crates.io]. See the [documentation] for its
+API.
+
+[crates.io]: https://crates.io/crates/lessify
+[documentation]: https://docs.rs/lessify

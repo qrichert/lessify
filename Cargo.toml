@@ -7,8 +7,8 @@ description = "Output text through a pager."
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/qrichert/lessify.git"
 readme = "README.md"
-keywords = ["tui", "less", "pager", "terminal", "console"]
-categories = ["command-line-interface", "rendering::engine"]
+keywords = ["pager", "terminal", "less", "command-output", "cli-output"]
+categories = ["command-line-interface"]
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin_include)'] }
