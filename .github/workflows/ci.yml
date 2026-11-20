@@ -78,3 +78,15 @@ jobs:
 
       - name: Run tests
         run: cargo test --locked
+
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@1.87.0
+
+      - name: Verify package
+        run: cargo package --locked
