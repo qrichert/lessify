@@ -76,6 +76,8 @@ impl Pager {
     /// This is a helper function for the common case where you don't
     /// really care whether the pager succeeded or not. Worst case, just
     /// print to stdout.
+    ///
+    /// A successful early quit skips the fallback to stdout.
     pub fn page_or_print(content: &str) {
         if Self::page(content).is_err() {
             let mut stdout = std::io::stdout();
@@ -95,12 +97,14 @@ impl Pager {
     ///
     /// # Errors
     ///
-    /// Errors if the pager cannot be spawned (e.g., executable
-    /// missing), or stdin cannot be captured or written to.
+    /// Returns an error if spawning the pager, capturing its stdin,
+    /// writing to it, or waiting for it fails. A broken pipe during a
+    /// write is treated as a successful early quit if the pager exits
+    /// successfully.
     pub fn page(content: &str) -> Result<(), io::Error> {
         // Try `PAGER` as-is first to support paths containing spaces.
         // If it cannot be found, try splitting it into pager and args.
-        let mut child = match spawn_pager(&PAGER, &[]) {
+        let child = match spawn_pager(&PAGER, &[]) {
             Err(e)
                 if e.kind() == io::ErrorKind::NotFound && PAGER.contains(char::is_whitespace) =>
             {
@@ -111,23 +115,7 @@ impl Pager {
             result => result?,
         };
 
-        let Some(stdin) = child.stdin.as_mut() else {
-            #[cfg(not(tarpaulin_include))]
-            return Err(io::Error::new(
-                io::ErrorKind::BrokenPipe,
-                "Failed to open stdin.",
-            ));
-        };
-
-        if content.ends_with('\n') {
-            write!(stdin, "{content}")?;
-        } else {
-            writeln!(stdin, "{content}")?;
-        }
-
-        child.wait()?;
-
-        Ok(())
+        write_to_pager(child, content)
     }
 }
 
@@ -187,4 +175,51 @@ fn spawn_pager(program: &str, args: &[&str]) -> io::Result<Child> {
     pager.stderr(Stdio::inherit());
 
     pager.spawn()
+}
+
+fn write_to_pager(mut child: Child, content: &str) -> io::Result<()> {
+    let write_result = child.stdin.as_mut().map(|stdin| {
+        if content.ends_with('\n') {
+            write!(stdin, "{content}")
+        } else {
+            writeln!(stdin, "{content}")
+        }
+    });
+
+    let status = child.wait()?;
+    match write_result {
+        Some(Err(error)) if error.kind() == io::ErrorKind::BrokenPipe && status.success() => Ok(()),
+        Some(result) => result,
+        None => Err(io::Error::new(
+            io::ErrorKind::BrokenPipe,
+            "Failed to open stdin.",
+        )),
+    }
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn accepts_successful_early_quit() {
+        assert!(write_to_early_quitting_pager("0").is_ok());
+    }
+
+    #[test]
+    fn preserves_broken_pipe_after_unsuccessful_early_exit() {
+        let error = write_to_early_quitting_pager("7").unwrap_err();
+        assert_eq!(error.kind(), io::ErrorKind::BrokenPipe);
+    }
+
+    fn write_to_early_quitting_pager(exit_code: &str) -> io::Result<()> {
+        let child = Command::new("sh")
+            .args(["-c", "IFS= read -r line && exit \"$1\"", "sh", exit_code])
+            .stdin(Stdio::piped())
+            .spawn()
+            .unwrap();
+        let content = "line\n".repeat(1_000_000);
+
+        write_to_pager(child, &content)
+    }
 }
