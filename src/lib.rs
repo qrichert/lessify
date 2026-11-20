@@ -1,7 +1,7 @@
 //! Output text through a pager.
 //!
-//! It uses `less` by default, or any pager set by the `PAGER`
-//! environment variable.
+//! It uses `less` by default (`more.com` on Windows), or any pager set
+//! by the [`PAGER`] environment variable.
 //!
 //! The points of interest are the [`Pager`] struct, and the
 //! [`OutputPaged`] trait.
@@ -53,10 +53,14 @@ use std::sync::LazyLock;
 /// 1. Look for `PAGER` in the environment.
 /// 2. If not set, default to `less` on Unix or `more.com` on Windows.
 ///
-/// If `PAGER` cannot be found as-is, split it on whitespace into
-/// the pager and its arguments (e.g., `less -S`). Trying it as-is
-/// first allows pager paths containing spaces. Quoting is not
-/// supported.
+/// If `PAGER` cannot be found as-is or the filename is invalid, split
+/// it on whitespace into the pager and its arguments (e.g., `less -S`).
+/// Trying it as-is first allows pager paths containing spaces. Quoting
+/// is not supported, so those paths cannot be combined with arguments.
+///
+/// For an executable named `less`, the crate passes `-R -F -X` before
+/// any user arguments and sets `LESSCHARSET=UTF-8` for the child. On
+/// Windows, it recognizes both `less` and `less.exe`, ignoring case.
 pub static PAGER: LazyLock<String> = LazyLock::new(|| {
     env::var("PAGER").unwrap_or_else(|_| {
         if cfg!(windows) {
@@ -80,7 +84,8 @@ impl Pager {
     ///
     /// A successful early quit skips the fallback to stdout. On
     /// failure, the fallback prints all of `content`, including any
-    /// text the pager already displayed.
+    /// text the pager already displayed. It follows the same trailing
+    /// newline rule as [`Self::page`].
     pub fn page_or_print(content: &str) {
         if Self::page(content).is_err() {
             let mut stdout = std::io::stdout();
@@ -93,10 +98,10 @@ impl Pager {
         }
     }
 
-    /// Try to use default pager to output `content`.
+    /// Send `content` to the pager selected by [`PAGER`].
     ///
-    /// The pager is read from the `PAGER` environment variable, or
-    /// defaults to `less` on Unix or `more.com` on Windows.
+    /// Appends `\n` if `content` does not already end in one. For empty
+    /// input, the pager receives a single `\n`.
     ///
     /// # Errors
     ///
@@ -127,6 +132,7 @@ impl Pager {
     }
 }
 
+/// Page values that implement [`Display`](fmt::Display) using [`Pager::page_or_print`].
 #[cfg(not(tarpaulin_include))]
 pub trait OutputPaged {
     /// Output `content` with default pager or print to stdout on error.

@@ -7,8 +7,8 @@
 
 _Output text through a pager._
 
-It uses `less` by default, or any pager set by the `PAGER` environment
-variable.
+It uses `less` by default (`more.com` on Windows), or any pager set by
+the `PAGER` environment variable.
 
 ## Example
 
