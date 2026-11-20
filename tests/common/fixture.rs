@@ -1,4 +1,4 @@
-use std::env::{self, consts::EXE_SUFFIX};
+use std::env::consts::EXE_SUFFIX;
 use std::fs::{self, Permissions};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -22,19 +22,24 @@ pub fn install(dir: &Path, name: &str) -> PathBuf {
 }
 
 fn compile(dir: &Path) -> Recorder {
-    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/pager.rs");
     let executable = dir.join(format!("pager-recorder-build{EXE_SUFFIX}"));
-    let rustc = env::var_os("RUSTC").unwrap_or_else(|| "rustc".into());
-    let output = Command::new(rustc)
-        .arg("--edition=2024")
-        .arg(source)
-        .arg("-o")
-        .arg(&executable)
+    let output = Command::new(env!("CARGO"))
+        .args([
+            "test",
+            "--quiet",
+            "--locked",
+            "--test",
+            "pager-recorder",
+            "--target-dir",
+        ])
+        .arg(Path::new(env!("CARGO_TARGET_TMPDIR")).join("pager-recorder-target"))
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .env("LESSIFY_TEST_INSTALL_RECORDER", &executable)
         .output()
-        .expect("run rustc for the pager fixture");
+        .expect("run Cargo for the pager fixture");
     assert!(
         output.status.success(),
-        "rustc failed to compile the pager fixture ({}):\n{}{}",
+        "Cargo failed to install the pager fixture ({}):\n{}{}",
         output.status,
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr),

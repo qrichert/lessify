@@ -1,8 +1,18 @@
 use std::env;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::{self, Write};
 
 fn main() -> io::Result<()> {
+    if let Some(destination) = env::var_os("LESSIFY_TEST_INSTALL_RECORDER") {
+        fs::copy(env::current_exe()?, destination)?;
+        return Ok(());
+    }
+    // A direct all-targets run has no child test to install or exercise
+    // this fixture.
+    if env::var_os("LESSIFY_TEST_CHILD").is_none() {
+        return Ok(());
+    }
+
     let mut args = capture_file("TEST_ARGS_FILE")?;
     for arg in env::args_os().skip(1) {
         args.write_all(arg.as_encoded_bytes())?;
