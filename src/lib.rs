@@ -42,6 +42,7 @@
 use std::env;
 use std::fmt;
 use std::io::{self, Write};
+use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::sync::LazyLock;
 
@@ -162,7 +163,7 @@ fn spawn_pager(program: &str, args: &[&str]) -> io::Result<Child> {
 
     #[cfg(not(tarpaulin_include))]
     {
-        if program == "less" || program.ends_with("/less") {
+        if is_less(program) {
             pager.env("LESSCHARSET", "UTF-8");
             // Add defaults first in case user args contain `--`.
             // Use short args for better compatibility.
@@ -178,6 +179,19 @@ fn spawn_pager(program: &str, args: &[&str]) -> io::Result<Child> {
     pager.stderr(Stdio::inherit());
 
     pager.spawn()
+}
+
+fn is_less(program: &str) -> bool {
+    Path::new(program).file_name().is_some_and(|name| {
+        #[cfg(windows)]
+        {
+            name.eq_ignore_ascii_case("less") || name.eq_ignore_ascii_case("less.exe")
+        }
+        #[cfg(not(windows))]
+        {
+            name == "less"
+        }
+    })
 }
 
 fn write_to_pager(mut child: Child, content: &str) -> io::Result<()> {
@@ -201,6 +215,15 @@ fn write_to_pager(mut child: Child, content: &str) -> io::Result<()> {
             "Failed to open stdin.",
         )),
     }
+}
+
+#[test]
+fn recognizes_less_by_filename() {
+    assert!(is_less("less"));
+    for program in ["less.exe", "LESS", r"C:\Tools\Less.EXE"] {
+        assert_eq!(is_less(program), cfg!(windows), "{program}");
+    }
+    assert!(!is_less("myless.exe"));
 }
 
 #[cfg(all(test, unix))]
