@@ -1,4 +1,7 @@
 mod common;
+#[cfg(unix)]
+#[path = "common/fixture.rs"]
+mod fixture;
 
 use lessify::{PAGER, Pager};
 use std::env;
@@ -11,9 +14,13 @@ const STDOUT_MARKER: u8 = 0;
 
 #[test]
 fn failing_pager_in_env() {
-    common::run("failing_pager_in_env", configure_pager, || {
-        assert_eq!(*PAGER, format!("{FIXTURES_DIR}/pager-fail"));
-    });
+    common::run(
+        "failing_pager_in_env",
+        |command, _| configure_pager(command),
+        || {
+            assert_eq!(*PAGER, format!("{FIXTURES_DIR}/pager-fail"));
+        },
+    );
 }
 
 #[test]
@@ -42,13 +49,17 @@ fn page_or_print_with_closed_stdout() {
 
 #[test]
 fn page_cannot_spawn_pager() {
-    common::run("page_cannot_spawn_pager", configure_pager, || {
-        let res = Pager::page("foo bar baz");
+    common::run(
+        "page_cannot_spawn_pager",
+        |command, _| configure_pager(command),
+        || {
+            let res = Pager::page("foo bar baz");
 
-        dbg!(&res);
+            dbg!(&res);
 
-        assert!(res.is_err());
-    });
+            assert!(res.is_err());
+        },
+    );
 }
 
 #[cfg(unix)]
@@ -56,11 +67,11 @@ fn page_cannot_spawn_pager() {
 fn page_preserves_permission_denied_for_literal_pager() {
     common::run(
         "page_preserves_permission_denied_for_literal_pager",
-        |command| {
+        |command, dir| {
+            fixture::install(dir, "capture");
             command.env("PAGER", "./capture denied");
         },
         || {
-            std::fs::copy(format!("{FIXTURES_DIR}/pager"), "capture").unwrap();
             std::fs::write("capture denied", []).unwrap();
 
             let error = Pager::page("hello").unwrap_err();

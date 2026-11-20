@@ -6,9 +6,9 @@ use lessify::PAGER;
 fn default_pager() {
     common::run(
         "default_pager",
-        |command| {
+        |command, _| {
             command.env_remove("PAGER");
         },
-        || assert_eq!(*PAGER, "less"),
+        || assert_eq!(*PAGER, if cfg!(windows) { "more.com" } else { "less" }),
     );
 }

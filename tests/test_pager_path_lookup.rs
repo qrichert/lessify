@@ -1,10 +1,12 @@
 mod common;
+#[path = "common/fixture.rs"]
+mod fixture;
+#[path = "common/search_path.rs"]
+mod search_path;
 
 use lessify::{PAGER, Pager};
-use std::env;
+use std::path::Path;
 use std::process::Command;
-
-const FIXTURES_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures");
 
 #[test]
 fn pager_spaced_name_in_env() {
@@ -26,14 +28,12 @@ fn page_resolves_spaced_name_through_path() {
 
             assert_eq!(stdin, "hello\nworld\n");
 
-            assert_eq!(args, "\n");
+            assert_eq!(args, "");
         },
     );
 }
 
-fn configure_pager(command: &mut Command) {
-    let path = env::var("PATH").unwrap_or_default();
-    command
-        .env("PATH", format!("{FIXTURES_DIR}/pathbin:{path}"))
-        .env("PAGER", "my pager");
+fn configure_pager(command: &mut Command, dir: &Path) {
+    search_path::install_pager(command, dir, "my pager");
+    command.env("PAGER", "my pager");
 }

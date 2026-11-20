@@ -1,14 +1,16 @@
 mod common;
+#[path = "common/fixture.rs"]
+mod fixture;
 
 use lessify::{OutputPaged, PAGER, Pager};
+use std::env;
+use std::path::Path;
 use std::process::Command;
-
-const FIXTURES_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures");
 
 #[test]
 fn pager_in_env() {
     common::run("pager_in_env", configure_pager, || {
-        assert_eq!(*PAGER, format!("{FIXTURES_DIR}/pager"));
+        assert_eq!(*PAGER, env::var("PAGER").unwrap());
     });
 }
 
@@ -67,7 +69,7 @@ fn output_paged_trait() {
     });
 }
 
-// Pager is a mock script that parrots stdin.
-fn configure_pager(command: &mut Command) {
-    command.env("PAGER", format!("{FIXTURES_DIR}/pager"));
+// Pager is a mock executable that parrots stdin.
+fn configure_pager(command: &mut Command, dir: &Path) {
+    command.env("PAGER", fixture::install(dir, "pager"));
 }

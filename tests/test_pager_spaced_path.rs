@@ -1,14 +1,16 @@
 mod common;
+#[path = "common/fixture.rs"]
+mod fixture;
 
 use lessify::{PAGER, Pager};
+use std::env;
+use std::path::Path;
 use std::process::Command;
-
-const FIXTURES_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures");
 
 #[test]
 fn pager_spaced_path_in_env() {
     common::run("pager_spaced_path_in_env", configure_pager, || {
-        assert_eq!(*PAGER, format!("{FIXTURES_DIR}/my pager/less"));
+        assert_eq!(*PAGER, env::var("PAGER").unwrap());
     });
 }
 
@@ -32,8 +34,8 @@ fn page_uses_spaced_executable_path_verbatim() {
     );
 }
 
-fn configure_pager(command: &mut Command) {
-    command.env("PAGER", format!("{FIXTURES_DIR}/my pager/less"));
+fn configure_pager(command: &mut Command, dir: &Path) {
+    command.env("PAGER", fixture::install(&dir.join("my pager"), "less"));
     // Ensure the crate overrides the inherited value.
     command.env("LESSCHARSET", "inherited-value");
 }

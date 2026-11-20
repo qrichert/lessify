@@ -7,7 +7,7 @@ use std::process::{self, Command};
 const CHILD_TEST: &str = "LESSIFY_TEST_CHILD";
 const COMPLETION_FILE: &str = "completed";
 
-pub fn run(test_name: &str, configure: impl FnOnce(&mut Command), test: impl FnOnce()) {
+pub fn run(test_name: &str, configure: impl FnOnce(&mut Command, &Path), test: impl FnOnce()) {
     if env::var(CHILD_TEST).as_deref() == Ok(test_name) {
         test();
         fs::write(COMPLETION_FILE, []).expect("record test completion");
@@ -15,20 +15,19 @@ pub fn run(test_name: &str, configure: impl FnOnce(&mut Command), test: impl FnO
     }
 
     let mut command = Command::new(env::current_exe().expect("locate the test executable"));
-    configure(&mut command);
-
     let dir = reserve_test_dir(test_name);
+    configure(&mut command, &dir.path);
+
     let output = command
         .args(["--exact", test_name, "--nocapture"])
-        .current_dir(&dir)
+        .current_dir(&dir.path)
         .env(CHILD_TEST, test_name)
         .env("TEST_OUTPUT_FILE", "stdin")
         .env("TEST_ARGS_FILE", "args")
         .env("TEST_LESSCHARSET_FILE", "lesscharset")
         .output();
     // Libtest exits successfully even if the filter selects zero tests.
-    let completed = dir.join(COMPLETION_FILE).is_file();
-    let cleanup = fs::remove_dir_all(&dir);
+    let completed = dir.path.join(COMPLETION_FILE).is_file();
 
     let output = output.expect("run the integration test in a child process");
     print!("{}", String::from_utf8_lossy(&output.stdout));
@@ -38,10 +37,13 @@ pub fn run(test_name: &str, configure: impl FnOnce(&mut Command), test: impl FnO
         "child for {test_name} exited with {} (completion recorded: {completed})",
         output.status,
     );
-    cleanup.unwrap_or_else(|error| panic!("could not remove {}: {error}", dir.display()));
 }
 
-fn reserve_test_dir(test_name: &str) -> PathBuf {
+struct TestDir {
+    path: PathBuf,
+}
+
+fn reserve_test_dir(test_name: &str) -> TestDir {
     let root = Path::new(env!("CARGO_TARGET_TMPDIR"));
     fs::create_dir_all(root).expect("create Cargo's temporary directory");
 
@@ -50,9 +52,20 @@ fn reserve_test_dir(test_name: &str) -> PathBuf {
     loop {
         let dir = root.join(format!("{test_name}-{pid}-{attempt}"));
         match fs::create_dir(&dir) {
-            Ok(()) => return dir,
+            Ok(()) => return TestDir { path: dir },
             Err(error) if error.kind() == ErrorKind::AlreadyExists => attempt += 1,
             Err(error) => panic!("could not create {}: {error}", dir.display()),
+        }
+    }
+}
+
+impl Drop for TestDir {
+    fn drop(&mut self) {
+        let cleanup = fs::remove_dir_all(&self.path);
+        if !std::thread::panicking() {
+            cleanup.unwrap_or_else(|error| {
+                panic!("could not remove {}: {error}", self.path.display())
+            });
         }
     }
 }
