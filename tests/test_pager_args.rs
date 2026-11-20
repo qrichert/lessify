@@ -1,6 +1,8 @@
 mod common;
 
 use lessify::{PAGER, Pager};
+use std::env;
+use std::path::PathBuf;
 use std::process::Command;
 
 const FIXTURES_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures");
@@ -8,7 +10,7 @@ const FIXTURES_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures"
 #[test]
 fn pager_with_arguments_in_env() {
     common::run("pager_with_arguments_in_env", configure_pager, || {
-        assert_eq!(*PAGER, format!("{FIXTURES_DIR}/less -S --"));
+        assert_eq!(*PAGER, "less -S --");
     });
 }
 
@@ -53,7 +55,12 @@ fn page_passes_long_argument_intact() {
 }
 
 fn configure_pager(command: &mut Command) {
-    command.env("PAGER", format!("{FIXTURES_DIR}/less -S --"));
+    let mut paths = vec![PathBuf::from(FIXTURES_DIR)];
+    if let Some(path) = env::var_os("PATH") {
+        paths.extend(env::split_paths(&path));
+    }
+    command.env("PATH", env::join_paths(paths).expect("build fixture PATH"));
+    command.env("PAGER", "less -S --");
     // Ensure the crate overrides the inherited value.
     command.env("LESSCHARSET", "inherited-value");
 }
