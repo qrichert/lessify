@@ -77,7 +77,9 @@ impl Pager {
     /// really care whether the pager succeeded or not. Worst case, just
     /// print to stdout.
     ///
-    /// A successful early quit skips the fallback to stdout.
+    /// A successful early quit skips the fallback to stdout. On
+    /// failure, the fallback prints all of `content`, including any
+    /// text the pager already displayed.
     pub fn page_or_print(content: &str) {
         if Self::page(content).is_err() {
             let mut stdout = std::io::stdout();
@@ -100,7 +102,8 @@ impl Pager {
     /// Returns an error if spawning the pager, capturing its stdin,
     /// writing to it, or waiting for it fails. A broken pipe during a
     /// write is treated as a successful early quit if the pager exits
-    /// successfully.
+    /// successfully. If the pager fails after the write completes, the
+    /// error includes its exit status.
     pub fn page(content: &str) -> Result<(), io::Error> {
         // Try `PAGER` as-is first to support paths containing spaces.
         // If it cannot be found, try splitting it into pager and args.
@@ -189,6 +192,9 @@ fn write_to_pager(mut child: Child, content: &str) -> io::Result<()> {
     let status = child.wait()?;
     match write_result {
         Some(Err(error)) if error.kind() == io::ErrorKind::BrokenPipe && status.success() => Ok(()),
+        Some(Ok(())) if !status.success() => {
+            Err(io::Error::other(format!("pager failed with {status}")))
+        }
         Some(result) => result,
         None => Err(io::Error::new(
             io::ErrorKind::BrokenPipe,
@@ -210,6 +216,18 @@ mod tests {
     fn preserves_broken_pipe_after_unsuccessful_early_exit() {
         let error = write_to_early_quitting_pager("7").unwrap_err();
         assert_eq!(error.kind(), io::ErrorKind::BrokenPipe);
+    }
+
+    #[test]
+    fn reports_unsuccessful_exit_after_completed_write() {
+        let child = Command::new("sh")
+            .args(["-c", "cat >/dev/null && exit 7"])
+            .stdin(Stdio::piped())
+            .spawn()
+            .unwrap();
+
+        let error = write_to_pager(child, "document\n").unwrap_err();
+        assert!(error.to_string().contains("exit status: 7"), "{error}");
     }
 
     fn write_to_early_quitting_pager(exit_code: &str) -> io::Result<()> {
