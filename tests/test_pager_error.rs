@@ -51,6 +51,26 @@ fn page_cannot_spawn_pager() {
     });
 }
 
+#[cfg(unix)]
+#[test]
+fn page_preserves_permission_denied_for_literal_pager() {
+    common::run(
+        "page_preserves_permission_denied_for_literal_pager",
+        |command| {
+            command.env("PAGER", "./capture denied");
+        },
+        || {
+            std::fs::copy(format!("{FIXTURES_DIR}/pager"), "capture").unwrap();
+            std::fs::write("capture denied", []).unwrap();
+
+            let error = Pager::page("hello").unwrap_err();
+
+            assert_eq!(error.kind(), io::ErrorKind::PermissionDenied);
+            assert!(!std::path::Path::new("stdin").exists());
+        },
+    );
+}
+
 fn assert_fallback_stdout(test_name: &str, content: &str, expected: &[u8]) {
     let output = start_fallback_caller(test_name, content)
         .wait_with_output()

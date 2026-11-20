@@ -32,6 +32,26 @@ fn page_splits_arguments_and_detects_less() {
     );
 }
 
+#[cfg(unix)]
+#[test]
+fn page_passes_long_argument_intact() {
+    let argument = "x".repeat(300);
+    common::run(
+        "page_passes_long_argument_intact",
+        |command| {
+            command.env("PAGER", format!("./capture {argument}"));
+        },
+        || {
+            std::fs::copy(format!("{FIXTURES_DIR}/less"), "capture").unwrap();
+
+            Pager::page("hello").unwrap();
+
+            let args = std::fs::read_to_string("args").unwrap();
+            assert_eq!(args, format!("{argument}\n"));
+        },
+    );
+}
+
 fn configure_pager(command: &mut Command) {
     command.env("PAGER", format!("{FIXTURES_DIR}/less -S --"));
     // Ensure the crate overrides the inherited value.

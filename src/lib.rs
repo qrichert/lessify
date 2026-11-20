@@ -107,10 +107,14 @@ impl Pager {
     /// error includes its exit status.
     pub fn page(content: &str) -> Result<(), io::Error> {
         // Try `PAGER` as-is first to support paths containing spaces.
-        // If it cannot be found, try splitting it into pager and args.
+        // If the name cannot be found or is invalid, try splitting it
+        // into pager and args.
         let child = match spawn_pager(&PAGER, &[]) {
             Err(e)
-                if e.kind() == io::ErrorKind::NotFound && PAGER.contains(char::is_whitespace) =>
+                if matches!(
+                    e.kind(),
+                    io::ErrorKind::NotFound | io::ErrorKind::InvalidFilename
+                ) && PAGER.contains(char::is_whitespace) =>
             {
                 let mut parts = PAGER.split_whitespace();
                 let program = parts.next().unwrap_or_default();
