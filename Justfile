@@ -33,7 +33,7 @@ check:
 alias t := test
 # Run unit tests
 test *args:
-    cargo test -- --test-threads 1 {{ args }}
+    cargo test -- {{ args }}
 
 # Build documentation
 doc:

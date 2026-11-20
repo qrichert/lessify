@@ -1,13 +1,14 @@
-use lessify::PAGER;
-use std::env;
+mod common;
 
-// `PAGER` is initialized once per execution, so we need another bin to
-// test the un-mocked default value (not used in other tests).
+use lessify::PAGER;
+
 #[test]
 fn default_pager() {
-    unsafe {
-        env::remove_var("PAGER");
-    }
-
-    assert_eq!(*PAGER, "less");
+    common::run(
+        "default_pager",
+        |command| {
+            command.env_remove("PAGER");
+        },
+        || assert_eq!(*PAGER, "less"),
+    );
 }
