@@ -8,10 +8,12 @@ use lessify::{PAGER, Pager};
 use std::path::Path;
 use std::process::Command;
 
+const PAGER_WITH_ARGS: &str = r#"less -S -- "two words" three\ four"#;
+
 #[test]
 fn pager_with_arguments_in_env() {
     common::run("pager_with_arguments_in_env", configure_pager, || {
-        assert_eq!(*PAGER, "less -S --");
+        assert_eq!(*PAGER, PAGER_WITH_ARGS);
     });
 }
 
@@ -29,8 +31,49 @@ fn page_splits_arguments_and_detects_less() {
 
             assert_eq!(stdin, "hello\nworld\n");
 
-            assert_eq!(args, "-R\n-F\n-X\n-S\n--\n");
+            assert_eq!(args, "-R\n-F\n-X\n-S\n--\n\"two\nwords\"\nthree\\\nfour\n");
             assert_eq!(lesscharset, "UTF-8\n");
+        },
+    );
+}
+
+#[test]
+fn page_with_preserves_argument_boundaries() {
+    common::run(
+        "page_with_preserves_argument_boundaries",
+        |command, dir| {
+            let program = fixture::install(&dir.join("my pager"), "less");
+            command.env("TEST_PAGER", program);
+            command.env("PAGER", dir.join("missing-pager"));
+        },
+        || {
+            let program = std::env::var_os("TEST_PAGER").unwrap();
+            Pager::page_with("hello", program, ["--", "two words", ""]).unwrap();
+
+            assert_eq!(std::fs::read("stdin").unwrap(), b"hello\n");
+            assert_eq!(
+                std::fs::read("args").unwrap(),
+                b"-R\n-F\n-X\n--\ntwo words\n\n"
+            );
+        },
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn page_with_preserves_non_unicode_argument() {
+    use std::ffi::OsStr;
+    use std::os::unix::ffi::OsStrExt;
+
+    common::run(
+        "page_with_preserves_non_unicode_argument",
+        |_, dir| {
+            fixture::install(dir, "capture");
+        },
+        || {
+            Pager::page_with("hello", "./capture", [OsStr::from_bytes(b"\xff")]).unwrap();
+
+            assert_eq!(std::fs::read("args").unwrap(), b"\xff\n");
         },
     );
 }
@@ -56,7 +99,7 @@ fn page_passes_long_argument_intact() {
 
 fn configure_pager(command: &mut Command, dir: &Path) {
     search_path::install_pager(command, dir, "less");
-    command.env("PAGER", "less -S --");
+    command.env("PAGER", PAGER_WITH_ARGS);
     // Ensure the crate overrides the inherited value.
     command.env("LESSCHARSET", "inherited-value");
 }

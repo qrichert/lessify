@@ -40,6 +40,7 @@
 //! - Setting the console codepage, if this is appropriate.
 
 use std::env;
+use std::ffi::OsStr;
 use std::fmt;
 use std::io::{self, Write};
 use std::path::Path;
@@ -55,8 +56,12 @@ use std::sync::LazyLock;
 ///
 /// If `PAGER` cannot be found as-is or the filename is invalid, split
 /// it on whitespace into the pager and its arguments (e.g., `less -S`).
-/// Trying it as-is first allows pager paths containing spaces. Quoting
-/// is not supported, so those paths cannot be combined with arguments.
+/// Trying it as-is first allows pager paths containing spaces. When
+/// splitting, quotes and backslashes are literal characters. Use
+/// [`Pager::page_with`] to pass arguments containing spaces.
+///
+/// An empty value produces a spawn error. A whitespace-only value does
+/// too unless it names an executable.
 ///
 /// For an executable named `less`, the crate passes `-R -F -X` before
 /// any user arguments and sets `LESSCHARSET=UTF-8` for the child. On
@@ -114,7 +119,7 @@ impl Pager {
         // Try `PAGER` as-is first to support paths containing spaces.
         // If the name cannot be found or is invalid, try splitting it
         // into pager and args.
-        let child = match spawn_pager(&PAGER, &[]) {
+        let child = match spawn_pager(PAGER.as_str(), [] as [&str; 0]) {
             Err(e)
                 if matches!(
                     e.kind(),
@@ -123,11 +128,39 @@ impl Pager {
             {
                 let mut parts = PAGER.split_whitespace();
                 let program = parts.next().unwrap_or_default();
-                spawn_pager(program, &parts.collect::<Vec<_>>())?
+                spawn_pager(program, parts)?
             }
             result => result?,
         };
 
+        write_to_pager(child, content)
+    }
+
+    /// Send `content` to a custom pager command.
+    ///
+    /// `program` selects the executable independently of [`PAGER`].
+    /// Each item in `args` is passed separately with [`Command::args`],
+    /// including empty arguments and arguments containing spaces. The
+    /// usual `less` defaults and trailing newline rule apply.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use lessify::Pager;
+    ///
+    /// Pager::page_with("very long text", "/opt/my/pager", ["-p", "release notes"])?;
+    /// # Ok::<(), std::io::Error>(())
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// See [`Self::page`] for errors and early-exit behavior.
+    pub fn page_with(
+        content: &str,
+        program: impl AsRef<OsStr>,
+        args: impl IntoIterator<Item = impl AsRef<OsStr>>,
+    ) -> io::Result<()> {
+        let child = spawn_pager(program, args)?;
         write_to_pager(child, content)
     }
 }
@@ -168,7 +201,11 @@ where
 }
 
 /// Spawn pager with arguments.
-fn spawn_pager(program: &str, args: &[&str]) -> io::Result<Child> {
+fn spawn_pager(
+    program: impl AsRef<OsStr>,
+    args: impl IntoIterator<Item = impl AsRef<OsStr>>,
+) -> io::Result<Child> {
+    let program = program.as_ref();
     let mut pager = Command::new(program);
 
     #[cfg(not(tarpaulin_include))]
@@ -191,7 +228,7 @@ fn spawn_pager(program: &str, args: &[&str]) -> io::Result<Child> {
     pager.spawn()
 }
 
-fn is_less(program: &str) -> bool {
+fn is_less(program: &OsStr) -> bool {
     Path::new(program).file_name().is_some_and(|name| {
         #[cfg(windows)]
         {
@@ -229,11 +266,11 @@ fn write_to_pager(mut child: Child, content: &str) -> io::Result<()> {
 
 #[test]
 fn recognizes_less_by_filename() {
-    assert!(is_less("less"));
+    assert!(is_less(OsStr::new("less")));
     for program in ["less.exe", "LESS", r"C:\Tools\Less.EXE"] {
-        assert_eq!(is_less(program), cfg!(windows), "{program}");
+        assert_eq!(is_less(OsStr::new(program)), cfg!(windows), "{program}");
     }
-    assert!(!is_less("myless.exe"));
+    assert!(!is_less(OsStr::new("myless.exe")));
 }
 
 #[cfg(all(test, unix))]
