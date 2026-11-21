@@ -9,7 +9,7 @@ use std::io::{self, BufRead, BufReader, Write};
 use std::process::{self, Child, Command, Stdio};
 
 const FIXTURES_DIR: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures");
-const FALLBACK_CHILD: &str = "LESSIFY_FALLBACK_CHILD";
+const REDIRECTED_CHILD: &str = "LESSIFY_REDIRECTED_CHILD";
 const STDOUT_MARKER: u8 = 0;
 
 #[test]
@@ -25,26 +25,26 @@ fn failing_pager_in_env() {
 
 #[test]
 fn page_or_print_with_newline() {
-    assert_fallback_stdout("page_or_print_with_newline", "hello\n", b"hello\n");
+    assert_redirected_stdout("page_or_print_with_newline", "hello\n", b"hello\n");
 }
 
 #[test]
 fn page_or_print_without_newline() {
-    assert_fallback_stdout("page_or_print_without_newline", "hello", b"hello\n");
+    assert_redirected_stdout("page_or_print_without_newline", "hello", b"hello\n");
 }
 
 #[test]
 fn page_or_print_empty() {
-    assert_fallback_stdout("page_or_print_empty", "", b"\n");
+    assert_redirected_stdout("page_or_print_empty", "", b"\n");
 }
 
 #[test]
 fn page_or_print_with_closed_stdout() {
-    let mut child = start_fallback_caller("page_or_print_with_closed_stdout", "hello");
+    let mut child = start_redirected_caller("page_or_print_with_closed_stdout", "hello");
     // Close the reader before wait closes stdin and releases the child.
     drop(child.stdout.take());
-    let status = child.wait().expect("wait for the fallback caller");
-    assert!(status.success(), "fallback caller exited with {status}");
+    let status = child.wait().expect("wait for the caller");
+    assert!(status.success(), "caller exited with {status}");
 }
 
 #[test]
@@ -82,20 +82,20 @@ fn page_preserves_permission_denied_for_literal_pager() {
     );
 }
 
-fn assert_fallback_stdout(test_name: &str, content: &str, expected: &[u8]) {
-    let output = start_fallback_caller(test_name, content)
+fn assert_redirected_stdout(test_name: &str, content: &str, expected: &[u8]) {
+    let output = start_redirected_caller(test_name, content)
         .wait_with_output()
-        .expect("collect the fallback caller's stdout");
+        .expect("collect the caller's stdout");
     assert!(
         output.status.success(),
-        "fallback caller exited with {}",
+        "caller exited with {}",
         output.status
     );
     assert_eq!(output.stdout, expected);
 }
 
-fn start_fallback_caller(test_name: &str, content: &str) -> Child {
-    if env::var(FALLBACK_CHILD).as_deref() == Ok(test_name) {
+fn start_redirected_caller(test_name: &str, content: &str) -> Child {
+    if env::var(REDIRECTED_CHILD).as_deref() == Ok(test_name) {
         let mut stdout = io::stdout();
         stdout
             .write_all(&[STDOUT_MARKER])
@@ -112,20 +112,20 @@ fn start_fallback_caller(test_name: &str, content: &str) -> Child {
     configure_pager(&mut command);
     let mut child = command
         .args(["--exact", test_name, "--nocapture"])
-        .env(FALLBACK_CHILD, test_name)
+        .env(REDIRECTED_CHILD, test_name)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
-        .expect("start the fallback caller");
+        .expect("start the caller");
 
-    // Discard libtest's startup output. The child writes the fallback after stdin EOF.
+    // Discard libtest's startup output. The child writes the content after stdin EOF.
     let mut startup = Vec::new();
     BufReader::new(child.stdout.as_mut().expect("borrow the caller's stdout"))
         .read_until(STDOUT_MARKER, &mut startup)
         .expect("read stdout marker");
     if startup.last() != Some(&STDOUT_MARKER) {
-        let status = child.wait().expect("wait for the fallback caller");
-        panic!("fallback caller for {test_name} exited with {status} before writing its marker");
+        let status = child.wait().expect("wait for the caller");
+        panic!("caller for {test_name} exited with {status} before writing its marker");
     }
 
     child

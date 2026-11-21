@@ -42,7 +42,7 @@
 use std::env;
 use std::ffi::OsStr;
 use std::fmt;
-use std::io::{self, Write};
+use std::io::{self, IsTerminal, Write};
 use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::sync::LazyLock;
@@ -91,9 +91,12 @@ impl Pager {
     /// failure, the fallback prints all of `content`, including any
     /// text the pager already displayed. It follows the same trailing
     /// newline rule as [`Self::page`].
+    ///
+    /// When stdout is redirected, write directly to it without starting
+    /// the pager.
     pub fn page_or_print(content: &str) {
-        if Self::page(content).is_err() {
-            let mut stdout = std::io::stdout();
+        let mut stdout = io::stdout();
+        if !stdout.is_terminal() || Self::page(content).is_err() {
             // Using write! instead of print! fixes a panic in some circumstances.
             if content.ends_with('\n') {
                 let _ = write!(stdout, "{content}");
