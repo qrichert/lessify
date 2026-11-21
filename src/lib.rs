@@ -38,6 +38,11 @@
 //! Possible alternative solutions include:
 //! - Reading the active console codepage and converting the output.
 //! - Setting the console codepage, if this is appropriate.
+//!
+//! In a test with both console code pages set to UTF-8, `more.com`
+//! displayed `café` correctly but dropped a line containing only
+//! `中文`. For non-ASCII output, set [`PAGER`] to a pager that
+//! supports UTF-8.
 
 use std::env;
 use std::ffi::OsStr;
