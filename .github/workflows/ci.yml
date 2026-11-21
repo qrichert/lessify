@@ -67,8 +67,11 @@ jobs:
       - name: Run Justfile target
         run: just ${{ matrix.target }}
 
-  windows-test:
-    runs-on: windows-latest
+  platform-test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
