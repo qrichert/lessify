@@ -59,6 +59,17 @@ fn page_without_newline() {
 }
 
 #[test]
+fn page_empty() {
+    common::run("page_empty", configure_pager, || {
+        Pager::page("").unwrap();
+
+        let res = std::fs::read("stdin").unwrap();
+
+        assert_eq!(res, b"\n");
+    });
+}
+
+#[test]
 fn output_paged_trait() {
     common::run("output_paged_trait", configure_pager, || {
         "very\nlong\nstring\n".output_paged();
